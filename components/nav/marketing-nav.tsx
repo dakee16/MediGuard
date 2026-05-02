@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { cn } from "../../lib/utils";
 import { ShieldPlus } from "lucide-react";
+import { useAuth } from "../../lib/auth-context";
 
 const NAV_LINKS = [
   { href: "/#features", label: "Features" },
@@ -15,6 +16,7 @@ const NAV_LINKS = [
 
 export function MarketingNav() {
   const pathname = usePathname();
+  const { user } = useAuth();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -25,9 +27,17 @@ export function MarketingNav() {
   }, []);
 
   // Hide marketing nav on app routes
-  if (pathname?.startsWith("/scan") || pathname?.startsWith("/medications") || pathname?.startsWith("/schedule") || pathname?.startsWith("/pharmacy")) {
+  if (
+    pathname?.startsWith("/scan") ||
+    pathname?.startsWith("/medications") ||
+    pathname?.startsWith("/schedule") ||
+    pathname?.startsWith("/pharmacy")
+  ) {
     return null;
   }
+
+  const ctaHref = user ? "/scan" : "/login";
+  const ctaLabel = user ? "Open app" : "Get started";
 
   return (
     <header className="fixed top-0 inset-x-0 z-50 px-4 pt-4">
@@ -39,7 +49,6 @@ export function MarketingNav() {
             : "bg-transparent border border-transparent"
         )}
       >
-        {/* Logo */}
         <Link href="/" className="flex items-center gap-2 pl-2 group">
           <span className="relative flex items-center justify-center w-9 h-9 rounded-2xl bg-gradient-to-br from-teal-400 to-teal-600 shadow-soft">
             <ShieldPlus className="w-4.5 h-4.5 text-white" strokeWidth={2.4} />
@@ -50,7 +59,6 @@ export function MarketingNav() {
           </span>
         </Link>
 
-        {/* Desktop links */}
         <ul className="hidden md:flex items-center gap-1">
           {NAV_LINKS.map((link) => (
             <li key={link.href}>
@@ -64,19 +72,17 @@ export function MarketingNav() {
           ))}
         </ul>
 
-        {/* CTA */}
         <div className="flex items-center gap-2">
-          <Link
-            href="/login"
-            className="hidden sm:inline-flex px-4 py-2 text-sm text-ink-700 hover:text-ink-900 transition-colors rounded-full hover:bg-white/40"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/scan"
-            className="btn-primary px-5 py-2 text-sm"
-          >
-            Open app
+          {!user && (
+            <Link
+              href="/login"
+              className="hidden sm:inline-flex px-4 py-2 text-sm text-ink-700 hover:text-ink-900 transition-colors rounded-full hover:bg-white/40"
+            >
+              Log in
+            </Link>
+          )}
+          <Link href={ctaHref} className="btn-primary px-5 py-2 text-sm">
+            {ctaLabel}
           </Link>
         </div>
       </nav>

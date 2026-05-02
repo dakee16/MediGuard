@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Camera, Pill, CalendarDays, MapPin, Home, ShieldPlus } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
+import { Camera, Pill, CalendarDays, MapPin, Home, ShieldPlus, LogOut, User as UserIcon, Sparkles } from "lucide-react";
 import { cn } from "../../lib/utils";
+import { useAuth } from "../../lib/auth-context";
 
 const TABS = [
   { href: "/scan", label: "Scan", icon: Camera },
@@ -14,7 +16,35 @@ const TABS = [
 
 export function AppNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, signOut, isDemo } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
   const isActive = (href: string) => pathname?.startsWith(href);
+
+  useEffect(() => {
+    const onClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    if (menuOpen) {
+      document.addEventListener("mousedown", onClickOutside);
+      return () => document.removeEventListener("mousedown", onClickOutside);
+    }
+  }, [menuOpen]);
+
+  async function handleSignOut() {
+    await signOut();
+    router.replace("/");
+  }
+
+  const initials = user?.displayName
+    ? user.displayName.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
+    : user?.email
+    ? user.email[0].toUpperCase()
+    : "G";
 
   return (
     <>
@@ -63,14 +93,45 @@ export function AppNav() {
             );
           })}
 
-          <div className="mt-auto">
-            <Link
-              href="/login"
-              className="flex items-center justify-center w-11 h-11 rounded-2xl bg-white/60 hover:bg-white/80 text-ink-700 transition-colors text-sm font-medium"
+          {/* User menu */}
+          <div className="mt-auto relative" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="flex items-center justify-center w-11 h-11 rounded-2xl bg-white/60 hover:bg-white/80 text-ink-700 transition-colors text-sm font-medium relative"
               aria-label="Account"
             >
-              SG
-            </Link>
+              {user?.photoURL ? (
+                <img src={user.photoURL} alt="" className="w-full h-full rounded-2xl object-cover" />
+              ) : (
+                initials
+              )}
+              {isDemo && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-coral-500 border-2 border-ink-50" />
+              )}
+            </button>
+
+            {menuOpen && (
+              <div className="absolute bottom-0 left-full ml-3 glass-strong rounded-2xl p-2 min-w-[200px] shadow-glass-lg">
+                <div className="px-3 py-2 border-b border-ink-200/60 mb-1">
+                  <p className="text-sm font-medium text-ink-900 truncate">
+                    {user?.displayName ?? user?.email ?? "Guest"}
+                  </p>
+                  {isDemo && (
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-coral-600 flex items-center gap-1 mt-0.5">
+                      <Sparkles className="w-2.5 h-2.5" />
+                      Demo mode
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm text-ink-700 hover:bg-white/40 transition-colors text-left"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  {isDemo ? "Exit demo" : "Sign out"}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </aside>
@@ -111,6 +172,47 @@ export function AppNav() {
           })}
         </div>
       </nav>
+
+      {/* Mobile floating user button (top-right) */}
+      <div className="lg:hidden fixed top-4 right-4 z-40" ref={menuRef}>
+        <button
+          onClick={() => setMenuOpen(!menuOpen)}
+          className="glass-strong w-11 h-11 rounded-full flex items-center justify-center text-ink-700 text-sm font-medium relative shadow-glass"
+          aria-label="Account"
+        >
+          {user?.photoURL ? (
+            <img src={user.photoURL} alt="" className="w-full h-full rounded-full object-cover" />
+          ) : (
+            initials
+          )}
+          {isDemo && (
+            <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-coral-500 border-2 border-ink-50" />
+          )}
+        </button>
+
+        {menuOpen && (
+          <div className="absolute top-full right-0 mt-2 glass-strong rounded-2xl p-2 min-w-[200px] shadow-glass-lg">
+            <div className="px-3 py-2 border-b border-ink-200/60 mb-1">
+              <p className="text-sm font-medium text-ink-900 truncate">
+                {user?.displayName ?? user?.email ?? "Guest"}
+              </p>
+              {isDemo && (
+                <p className="text-[10px] font-mono uppercase tracking-widest text-coral-600 flex items-center gap-1 mt-0.5">
+                  <Sparkles className="w-2.5 h-2.5" />
+                  Demo mode
+                </p>
+              )}
+            </div>
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm text-ink-700 hover:bg-white/40 transition-colors text-left"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              {isDemo ? "Exit demo" : "Sign out"}
+            </button>
+          </div>
+        )}
+      </div>
     </>
   );
 }

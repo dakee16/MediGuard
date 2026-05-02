@@ -1,14 +1,35 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Camera, Upload, X, Loader2, Sparkles, AlertCircle, CheckCircle2, Plus } from "lucide-react";
+import {
+  Camera,
+  Upload,
+  X,
+  Loader2,
+  Sparkles,
+  AlertCircle,
+  CheckCircle2,
+  Plus,
+} from "lucide-react";
 import { LiquidGlass } from "../../../components/ui/liquid-glass";
 import { cn } from "../../../lib/utils";
+import { useAuth } from "../../../lib/auth-context";
+import { addMedication } from "../../../lib/data";
+import { AuthGate } from "../../../components/auth/auth-gate";
 import type { AnalyzedMedication } from "../../../types";
 
 type Status = "idle" | "captured" | "analyzing" | "result" | "error";
 
 export default function ScanPage() {
+  return (
+    <AuthGate>
+      <ScanContent />
+    </AuthGate>
+  );
+}
+
+function ScanContent() {
+  const { user, isDemo } = useAuth();
   const [status, setStatus] = useState<Status>("idle");
   const [imageSrc, setImageSrc] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzedMedication | null>(null);
@@ -27,9 +48,6 @@ export default function ScanPage() {
     reader.onload = async (e) => {
       const dataUrl = e.target?.result as string;
       setImageSrc(dataUrl);
-      setStatus("captured");
-
-      // Auto-analyze
       setStatus("analyzing");
       try {
         const res = await fetch("/api/scan", {
@@ -37,7 +55,10 @@ export default function ScanPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ image: dataUrl }),
         });
-        if (!res.ok) throw new Error("Analysis failed");
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error ?? "Analysis failed");
+        }
         const data = await res.json();
         setResult(data);
         setStatus("result");
@@ -141,7 +162,14 @@ export default function ScanPage() {
               </LiquidGlass>
             )}
 
-            {status === "result" && result && <ResultCard result={result} onReset={reset} />}
+            {status === "result" && result && user && (
+              <ResultCard
+                result={result}
+                onReset={reset}
+                uid={user.uid}
+                isDemo={isDemo}
+              />
+            )}
           </div>
         </div>
       )}
@@ -149,11 +177,58 @@ export default function ScanPage() {
   );
 }
 
-function ResultCard({ result, onReset }: { result: AnalyzedMedication; onReset: () => void }) {
+function ResultCard({
+  result,
+  onReset,
+  uid,
+  isDemo,
+}: {
+  result: AnalyzedMedication;
+  onReset: () => void;
+  uid: string;
+  isDemo: boolean;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(false);
+
   const confidenceColor =
-    result.confidence === "high" ? "text-teal-700 bg-teal-100" :
-    result.confidence === "medium" ? "text-coral-700 bg-coral-100" :
-    "text-ink-700 bg-ink-100";
+    result.confidence === "high"
+      ? "text-teal-700 bg-teal-100"
+      : result.confidence === "medium"
+      ? "text-coral-700 bg-coral-100"
+      : "text-ink-700 bg-ink-100";
+
+  async function handleAdd() {
+    setAdding(true);
+    try {
+      const formMap: Record<string, "tablet" | "capsule" | "liquid" | "injection" | "other"> = {
+        tablet: "tablet",
+        capsule: "capsule",
+        liquid: "liquid",
+        injection: "injection",
+      };
+      await addMedication(uid, isDemo, {
+        name: result.name,
+        dosage: result.dosage,
+        form: formMap[result.form?.toLowerCase()] ?? "other",
+        color: result.color?.toLowerCase().includes("white")
+          ? "white"
+          : result.color?.toLowerCase().includes("yellow")
+          ? "yellow"
+          : "white",
+        imprint: result.imprint ?? undefined,
+        uses: result.uses ?? [],
+        pillsRemaining: 30,
+        refillThreshold: 7,
+      });
+      setAdded(true);
+    } catch (err) {
+      console.error(err);
+      alert("Couldn't add medication. Please try again.");
+    } finally {
+      setAdding(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -162,16 +237,31 @@ function ResultCard({ result, onReset }: { result: AnalyzedMedication; onReset: 
           <div>
             <p className="text-[10px] font-mono uppercase tracking-widest text-teal-700 mb-1">Identified</p>
             <h2 className="font-display text-3xl text-ink-950 leading-tight">{result.name}</h2>
-            <p className="font-mono text-sm text-ink-600 mt-1">{result.dosage} · {result.form}</p>
+            <p className="font-mono text-sm text-ink-600 mt-1">
+              {result.dosage} · {result.form}
+            </p>
           </div>
           <span className={cn("text-[10px] font-mono uppercase tracking-widest px-2.5 py-1 rounded-full", confidenceColor)}>
             {result.confidence ?? "unknown"} confidence
           </span>
         </div>
 
-        <button className="btn-primary w-full py-3 mt-3">
-          <Plus className="w-4 h-4" />
-          Add to My Medications
+        <button
+          onClick={handleAdd}
+          disabled={adding || added}
+          className={cn(
+            "w-full py-3 mt-3 transition-all",
+            added ? "btn-primary !bg-teal-700 cursor-default" : "btn-primary"
+          )}
+        >
+          {adding ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : added ? (
+            <CheckCircle2 className="w-4 h-4" />
+          ) : (
+            <Plus className="w-4 h-4" />
+          )}
+          {added ? "Added to your medications" : "Add to my medications"}
         </button>
       </LiquidGlass>
 
@@ -215,7 +305,15 @@ function ResultCard({ result, onReset }: { result: AnalyzedMedication; onReset: 
   );
 }
 
-function Section({ title, items, accent = "default" }: { title: string; items?: string[]; accent?: "default" | "coral" | "warning" }) {
+function Section({
+  title,
+  items,
+  accent = "default",
+}: {
+  title: string;
+  items?: string[];
+  accent?: "default" | "coral" | "warning";
+}) {
   if (!items || items.length === 0) return null;
   const dotColor = accent === "warning" ? "text-coral-500" : accent === "coral" ? "text-coral-400" : "text-teal-500";
 
