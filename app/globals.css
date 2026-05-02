@@ -1,0 +1,247 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================================================
+   BASE
+   ======================================================================== */
+
+:root {
+  --bg: 250 249 247;
+  --fg: 25 24 21;
+  --teal: 52 153 144;
+  --coral: 227 93 69;
+  --grain-opacity: 0.025;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: rgb(var(--bg));
+  color: rgb(var(--fg));
+  font-feature-settings: "ss01", "cv11";
+  overflow-x: hidden;
+}
+
+/* Subtle grain overlay — adds tactile warmth */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence baseFrequency='0.85' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.6 0'/></filter><rect width='200' height='200' filter='url(%23n)'/></svg>");
+  mix-blend-mode: multiply;
+}
+
+/* Selection */
+::selection {
+  background: rgb(var(--teal) / 0.2);
+  color: rgb(var(--fg));
+}
+
+/* Scrollbar — minimal, refined */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--fg) / 0.1);
+  border-radius: 999px;
+  border: 2px solid rgb(var(--bg));
+}
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--fg) / 0.2); }
+
+/* ========================================================================
+   LIQUID GLASS — iOS 26 inspired
+   ======================================================================== */
+
+@layer components {
+  .glass {
+    position: relative;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow:
+      0 8px 32px -8px rgba(25, 64, 62, 0.12),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.7),
+      inset 0 -1px 0 0 rgba(25, 64, 62, 0.04);
+  }
+
+  .glass-strong {
+    position: relative;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(40px) saturate(200%);
+    -webkit-backdrop-filter: blur(40px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow:
+      0 16px 48px -12px rgba(25, 64, 62, 0.15),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.8);
+  }
+
+  .glass-tint {
+    position: relative;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.6) 0%,
+      rgba(239, 250, 248, 0.4) 100%
+    );
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    box-shadow:
+      0 8px 32px -8px rgba(25, 64, 62, 0.1),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.7);
+  }
+
+  /* Specular highlight — the iOS "wet" sheen */
+  .glass::after,
+  .glass-strong::after,
+  .glass-tint::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.35) 0%,
+      rgba(255, 255, 255, 0) 35%,
+      rgba(255, 255, 255, 0) 65%,
+      rgba(255, 255, 255, 0.05) 100%
+    );
+    pointer-events: none;
+  }
+
+  /* Pill-shaped glass button (iOS style) */
+  .glass-button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 999px;
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.9) inset,
+      0 -1px 0 0 rgba(25, 64, 62, 0.06) inset,
+      0 4px 16px -4px rgba(25, 64, 62, 0.1);
+    transition: transform 240ms var(--ease-out), box-shadow 240ms var(--ease-out), background 240ms;
+  }
+  .glass-button:hover {
+    background: rgba(255, 255, 255, 0.8);
+    transform: translateY(-1px);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.95) inset,
+      0 -1px 0 0 rgba(25, 64, 62, 0.06) inset,
+      0 8px 24px -6px rgba(25, 64, 62, 0.18);
+  }
+  .glass-button:active { transform: translateY(0) scale(0.98); }
+
+  /* Solid teal CTA */
+  .btn-primary {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: linear-gradient(180deg, #3aa89e 0%, #287872 100%);
+    color: white;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.25) inset,
+      0 8px 20px -6px rgba(40, 120, 114, 0.45);
+    transition: transform 240ms var(--ease-out), box-shadow 240ms var(--ease-out);
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 1px 0 0 rgba(255, 255, 255, 0.3) inset,
+      0 12px 28px -8px rgba(40, 120, 114, 0.55);
+  }
+  .btn-primary:active { transform: translateY(0) scale(0.98); }
+
+  /* Reveal on scroll — paired with intersection observer in components */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.9s var(--ease-out), transform 0.9s var(--ease-out);
+  }
+  .reveal.in-view {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .reveal.delay-1 { transition-delay: 0.08s; }
+  .reveal.delay-2 { transition-delay: 0.16s; }
+  .reveal.delay-3 { transition-delay: 0.24s; }
+  .reveal.delay-4 { transition-delay: 0.32s; }
+  .reveal.delay-5 { transition-delay: 0.40s; }
+}
+
+/* ========================================================================
+   ATMOSPHERE — soft animated background blobs
+   ======================================================================== */
+
+.aurora {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.aurora-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.5;
+  animation: float 14s ease-in-out infinite;
+}
+
+.aurora-blob-1 {
+  width: 540px; height: 540px;
+  background: radial-gradient(circle, rgba(82, 179, 166, 0.55), transparent 70%);
+  top: -10%; left: -8%;
+}
+.aurora-blob-2 {
+  width: 480px; height: 480px;
+  background: radial-gradient(circle, rgba(247, 177, 162, 0.42), transparent 70%);
+  top: 20%; right: -10%;
+  animation-delay: -4s;
+}
+.aurora-blob-3 {
+  width: 420px; height: 420px;
+  background: radial-gradient(circle, rgba(177, 227, 217, 0.5), transparent 70%);
+  bottom: -10%; left: 30%;
+  animation-delay: -8s;
+}
+
+/* ========================================================================
+   UTILITY
+   ======================================================================== */
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.text-balance { text-wrap: balance; }
+.text-pretty { text-wrap: pretty; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

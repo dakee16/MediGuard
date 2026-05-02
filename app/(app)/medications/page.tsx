@@ -1,0 +1,253 @@
+"use client";
+
+import { useState } from "react";
+import { Pill, Plus, ShoppingBag, AlertCircle, Search, ExternalLink } from "lucide-react";
+import { LiquidGlass } from "../../../components/ui/liquid-glass";
+import { cn } from "../../../lib/utils";
+import type { Medication, MarketListing } from "../../../types";
+
+// Demo data — replace with Firestore in production
+const SEED_MEDS: Medication[] = [
+  {
+    id: "1",
+    name: "Atorvastatin",
+    dosage: "10 mg",
+    form: "tablet",
+    color: "white",
+    uses: ["Cholesterol management"],
+    pillsRemaining: 8,
+    refillThreshold: 10,
+    addedAt: "2025-04-12",
+  },
+  {
+    id: "2",
+    name: "Vitamin D3",
+    dosage: "2000 IU",
+    form: "capsule",
+    color: "yellow",
+    uses: ["Bone health", "Immune support"],
+    pillsRemaining: 42,
+    refillThreshold: 14,
+    addedAt: "2025-03-01",
+  },
+  {
+    id: "3",
+    name: "Metformin",
+    dosage: "500 mg",
+    form: "tablet",
+    color: "white",
+    uses: ["Type 2 diabetes"],
+    pillsRemaining: 25,
+    refillThreshold: 14,
+    addedAt: "2025-02-18",
+  },
+  {
+    id: "4",
+    name: "Omega-3",
+    dosage: "1000 mg",
+    form: "capsule",
+    color: "amber",
+    uses: ["Heart health"],
+    pillsRemaining: 4,
+    refillThreshold: 7,
+    addedAt: "2024-12-08",
+  },
+];
+
+const MOCK_LISTINGS: Record<string, MarketListing[]> = {
+  Atorvastatin: [
+    { id: "a1", medicationName: "Atorvastatin 10mg", vendor: "CVS", price: 14.99, unit: "30 tablets", shipping: "Free in 2 days" },
+    { id: "a2", medicationName: "Atorvastatin 10mg", vendor: "Amazon Pharmacy", price: 12.49, unit: "30 tablets", shipping: "Free Prime" },
+    { id: "a3", medicationName: "Atorvastatin 10mg", vendor: "Costco", price: 9.99, unit: "30 tablets", shipping: "Members" },
+  ],
+  "Omega-3": [
+    { id: "o1", medicationName: "Omega-3 1000mg", vendor: "CVS", price: 22.99, unit: "60 capsules" },
+    { id: "o2", medicationName: "Omega-3 1000mg", vendor: "Amazon Pharmacy", price: 18.49, unit: "60 capsules", shipping: "Free Prime" },
+    { id: "o3", medicationName: "Omega-3 1000mg", vendor: "Walgreens", price: 24.49, unit: "60 capsules" },
+  ],
+};
+
+export default function MedicationsPage() {
+  const [meds] = useState<Medication[]>(SEED_MEDS);
+  const [filter, setFilter] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const filtered = meds.filter((m) =>
+    m.name.toLowerCase().includes(filter.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-6">
+      <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-mono uppercase tracking-[0.25em] text-teal-700 mb-2">
+            {meds.length} medications · {meds.filter(m => (m.pillsRemaining ?? 0) <= (m.refillThreshold ?? 0)).length} need refill
+          </p>
+          <h1 className="font-display text-display-md text-ink-950">Your Medications</h1>
+        </div>
+        <button className="btn-primary px-5 py-2.5 text-sm self-start md:self-auto">
+          <Plus className="w-4 h-4" />
+          Add medication
+        </button>
+      </header>
+
+      {/* Search */}
+      <LiquidGlass variant="default" className="p-3 flex items-center gap-3">
+        <Search className="w-4 h-4 text-ink-500 ml-2" />
+        <input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Search your medications…"
+          className="flex-1 bg-transparent border-none outline-none text-sm text-ink-900 placeholder:text-ink-500"
+        />
+      </LiquidGlass>
+
+      {/* Medication list */}
+      <div className="space-y-3">
+        {filtered.map((med) => (
+          <MedicationCard
+            key={med.id}
+            med={med}
+            expanded={expandedId === med.id}
+            onToggle={() => setExpandedId(expandedId === med.id ? null : med.id)}
+          />
+        ))}
+      </div>
+
+      {filtered.length === 0 && (
+        <LiquidGlass variant="tint" className="p-12 text-center">
+          <Pill className="w-8 h-8 text-ink-400 mx-auto mb-4" />
+          <p className="font-display text-xl text-ink-950">No medications found</p>
+          <p className="text-sm text-ink-600 mt-1">Try a different search or add a new one.</p>
+        </LiquidGlass>
+      )}
+    </div>
+  );
+}
+
+function MedicationCard({
+  med,
+  expanded,
+  onToggle,
+}: {
+  med: Medication;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const lowSupply = (med.pillsRemaining ?? 0) <= (med.refillThreshold ?? 0);
+  const supplyPercent = Math.min(100, ((med.pillsRemaining ?? 0) / ((med.refillThreshold ?? 0) * 3)) * 100);
+  const listings = MOCK_LISTINGS[med.name] ?? [];
+
+  return (
+    <LiquidGlass variant={expanded ? "strong" : "default"} className={cn("transition-all duration-300", expanded && "shadow-glass-lg")}>
+      <button
+        onClick={onToggle}
+        className="w-full text-left p-5 flex items-center gap-4"
+      >
+        {/* Pill visual */}
+        <div className="relative shrink-0">
+          <div
+            className={cn(
+              "w-14 h-14 rounded-2xl flex items-center justify-center bg-gradient-to-br shadow-soft",
+              med.color === "white" ? "from-ink-100 to-ink-200" :
+              med.color === "yellow" ? "from-yellow-200 to-yellow-300" :
+              med.color === "amber" ? "from-amber-300 to-amber-500" :
+              "from-teal-300 to-teal-500"
+            )}
+          >
+            <Pill className="w-5 h-5 text-ink-700" strokeWidth={2} />
+          </div>
+          {lowSupply && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-coral-500 border-2 border-ink-50 flex items-center justify-center">
+              <span className="w-1.5 h-1.5 rounded-full bg-white" />
+            </span>
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="font-display text-lg text-ink-950 truncate">{med.name}</p>
+            <span className="font-mono text-xs text-ink-500">{med.dosage}</span>
+          </div>
+          <p className="text-xs text-ink-600 mt-0.5">{med.uses?.[0] ?? med.form}</p>
+        </div>
+
+        {/* Supply */}
+        <div className="text-right shrink-0">
+          <p className={cn("font-mono text-sm tabular-nums", lowSupply ? "text-coral-700" : "text-ink-700")}>
+            {med.pillsRemaining}
+          </p>
+          <p className="text-[10px] font-mono uppercase tracking-wider text-ink-500">left</p>
+        </div>
+      </button>
+
+      {/* Supply bar */}
+      <div className="px-5 pb-4">
+        <div className="h-1 rounded-full bg-ink-100 overflow-hidden">
+          <div
+            className={cn(
+              "h-full rounded-full transition-all duration-700",
+              lowSupply ? "bg-gradient-to-r from-coral-400 to-coral-500" : "bg-gradient-to-r from-teal-400 to-teal-500"
+            )}
+            style={{ width: `${supplyPercent}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Expanded refill marketplace */}
+      {expanded && (
+        <div className="px-5 pb-5 pt-2 border-t border-ink-200/60 space-y-4">
+          {lowSupply && (
+            <div className="flex items-center gap-2 text-coral-700 bg-coral-50/60 rounded-2xl px-4 py-3">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <p className="text-sm">Running low — refill recommended this week.</p>
+            </div>
+          )}
+
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-mono uppercase tracking-widest text-ink-500 flex items-center gap-2">
+                <ShoppingBag className="w-3.5 h-3.5" />
+                Refill marketplace
+              </p>
+              <p className="text-[10px] font-mono text-ink-500">Live prices</p>
+            </div>
+
+            {listings.length > 0 ? (
+              <div className="space-y-2">
+                {listings.sort((a, b) => a.price - b.price).map((listing, i) => (
+                  <button
+                    key={listing.id}
+                    className={cn(
+                      "w-full glass-button !rounded-2xl !justify-between p-4 group",
+                      i === 0 && "!bg-teal-500/10"
+                    )}
+                  >
+                    <div className="flex items-center gap-3 text-left">
+                      <span className="font-display text-sm text-ink-950">{listing.vendor}</span>
+                      {i === 0 && (
+                        <span className="text-[9px] font-mono uppercase tracking-widest px-2 py-0.5 rounded-full bg-teal-600 text-white">
+                          Best price
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <p className="font-mono text-sm tabular-nums text-ink-900">${listing.price.toFixed(2)}</p>
+                        <p className="text-[10px] text-ink-500">{listing.unit}</p>
+                      </div>
+                      <ExternalLink className="w-3.5 h-3.5 text-ink-500 group-hover:text-ink-900" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-ink-500 italic">No live listings available.</p>
+            )}
+          </div>
+        </div>
+      )}
+    </LiquidGlass>
+  );
+}
